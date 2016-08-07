@@ -14,12 +14,10 @@ namespace http {
 namespace server {
 namespace mime_types {
 
-struct mapping
-{
+struct mapping {
   const char* extension;
   const char* mime_type;
-} mappings[] =
-{
+} mappings[] = {
   { "gif", "image/gif" },
   { "htm", "text/html" },
   { "html", "text/html" },
@@ -27,12 +25,9 @@ struct mapping
   { "png", "image/png" }
 };
 
-std::string extension_to_type(const std::string& extension)
-{
-  for (mapping m: mappings)
-  {
-    if (m.extension == extension)
-    {
+std::string extension_to_type(const std::string& extension) {
+  for (mapping m: mappings) {
+    if (m.extension == extension) {
       return m.mime_type;
     }
   }

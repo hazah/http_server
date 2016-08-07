@@ -17,7 +17,7 @@
 namespace http {
 namespace server {
 
-connection::connection(boost::asio::ip::tcp::socket socket,
+connection::connection(boost::asio::ip::tcp::socket&& socket,
     connection_manager& manager, request_handler& handler)
   : socket_(std::move(socket)),
     connection_manager_(manager),
@@ -33,9 +33,8 @@ void connection::stop() {
 }
 
 void connection::do_read() {
-  auto self(shared_from_this());
   socket_.async_read_some(boost::asio::buffer(buffer_),
-      [this, self](boost::system::error_code ec, std::size_t bytes_transferred) {
+      [this, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred) {
         if (!ec) {
           request_parser::result_type result;
           std::tie(result, std::ignore) = request_parser_.parse(
@@ -60,9 +59,8 @@ void connection::do_read() {
 }
 
 void connection::do_write() {
-  auto self(shared_from_this());
   boost::asio::async_write(socket_, reply_.to_buffers(),
-      [this, self](boost::system::error_code ec, std::size_t) {
+      [this, self = shared_from_this()](boost::system::error_code ec, std::size_t) {
         if (!ec) {
           // Initiate graceful connection closure.
           boost::system::error_code ignored_ec;

@@ -32,7 +32,7 @@ public:
   connection& operator=(const connection&) = delete;
 
   /// Construct a connection with the given socket.
-  explicit connection(boost::asio::ip::tcp::socket socket,
+  explicit connection(boost::asio::ip::tcp::socket&& socket,
       connection_manager& manager, request_handler& handler);
 
   /// Start the first asynchronous operation for the connection.

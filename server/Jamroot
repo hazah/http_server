@@ -1,0 +1,18 @@
+using gcc : : : <compileflags>-std=c++1y ;
+
+lib pthread : : <name>pthread ;
+lib system : : <name>boost_system ;
+
+exe http_server
+  : pthread
+    system
+    connection.cpp
+    connection_manager.cpp
+    main.cpp
+    mime_types.cpp
+    reply.cpp
+    request_handler.cpp
+    request_parser.cpp
+    server.cpp
+  : <toolset>gcc
+  ;

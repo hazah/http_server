@@ -2,10 +2,14 @@ using gcc : : : <compileflags>-std=c++1y ;
 
 lib pthread : : <name>pthread ;
 lib system : : <name>boost_system ;
+lib filesystem : : <name>boost_filesystem ;
+lib program_options : : <name>boost_program_options ;
 
 exe http_server
   : pthread
     system
+    program_options
+    filesystem
     connection.cpp
     connection_manager.cpp
     main.cpp

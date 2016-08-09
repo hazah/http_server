@@ -28,19 +28,26 @@ int main(int argc, const char* argv[]) {
     options_description info, config, cl_options;
     
     info.add_options()
-        ("version,v", value<bool>()->implicit_value(true)->notifier(
-                [&](bool) {
-                  cerr << "0" << endl;
-                  exit(0);
+        ("version,v", bool_switch()->default_value(false)->notifier(
+                [&](bool display) {
+                  if (display) {
+                    cerr << "0" << endl;
+                    exit(0);
+                  }
                 }
             ),
             "Print version string and exit.")
-        ("help,?", value<bool>()->implicit_value(true)->notifier(
-                [&](bool) {
-                  options_description help("Usage: http_server <host> <port> <application_root>");
-                  help.add(info).add(config);
-                  cerr << "new spot\n" << help;
-                  exit(0);
+        ("help,?", bool_switch()->default_value(false)->notifier(
+                [&](bool display) {
+                  if (display) {
+                    options_description
+                        help("Usage: http_server <host> <port> <application_root>");
+                    
+                    help.add(info).add(config);
+                    
+                    cerr << help;
+                    exit(0);
+                  }
                 }
             ),
             "Display help information and exit.")

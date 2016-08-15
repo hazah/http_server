@@ -13,27 +13,24 @@
 namespace http {
 namespace server {
 
-connection_manager::connection_manager()
-{
+using namespace boost::asio;
+
+connection_manager::connection_manager(io_service& io_service)
+  : io_service_(io_service) {
 }
 
-void connection_manager::start(connection_ptr c)
-{
+void connection_manager::start(connection_ptr c) {
   connections_.insert(c);
   c->start();
 }
 
-void connection_manager::stop(connection_ptr c)
-{
+void connection_manager::stop(connection_ptr c) {
   connections_.erase(c);
   c->stop();
 }
 
-void connection_manager::stop_all()
-{
-  for (auto c: connections_)
-    c->stop();
-  connections_.clear();
+void connection_manager::stop_all() {
+  io_service_.stop();
 }
 
 } // namespace server

@@ -35,19 +35,14 @@ public:
   explicit connection(boost::asio::ip::tcp::socket&& socket,
       connection_manager& manager, request_handler& handler);
 
+private:
+
   /// Start the first asynchronous operation for the connection.
   void start();
 
   /// Stop all asynchronous operations associated with the connection.
   void stop();
-
-private:
-  /// Perform an asynchronous read operation.
-  void do_read();
-
-  /// Perform an asynchronous write operation.
-  void do_write();
-
+  
   /// Socket for the connection.
   boost::asio::ip::tcp::socket socket_;
 
@@ -57,9 +52,6 @@ private:
   /// The handler used to process the incoming request.
   request_handler& request_handler_;
 
-  /// Buffer for incoming data.
-  std::array<char, 8192> buffer_;
-
   /// The incoming request.
   request request_;
 
@@ -68,6 +60,8 @@ private:
 
   /// The reply to be sent back to the client.
   reply reply_;
+  
+  friend class connection_manager;
 };
 
 typedef std::shared_ptr<connection> connection_ptr;

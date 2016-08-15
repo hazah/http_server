@@ -44,6 +44,9 @@ public:
     }
     return std::make_tuple(indeterminate, begin);
   }
+  
+  bool parse_request_line(request& request, std::string request_line) { return true; }
+  bool parse_headers(request& request, std::string headers) { return true; }
 
 private:
   /// Handle the next character of input.

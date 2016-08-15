@@ -25,7 +25,10 @@ struct request
   std::string uri;
   int http_version_major;
   int http_version_minor;
-  std::vector<header> headers;
+  struct {
+    size_t content_length;
+  } headers;
+  std::string payload;
 };
 
 } // namespace server

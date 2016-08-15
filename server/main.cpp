@@ -80,10 +80,10 @@ int main(int argc, const char* argv[]) {
          << application_root << "]" << endl;
 
     // Initialize the server.
-    server http_server(host, port, application_root);
+    server http_server(application_root);
 
     // Run the server until stopped.
-    http_server.run();
+    http_server.start(host, port);
   } catch (exception& error) {
     cerr << "error: " << error.what() << "\n";
     return 1;

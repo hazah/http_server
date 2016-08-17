@@ -31,6 +31,7 @@ using namespace boost::asio;
 using namespace boost::asio::ip;
 using boost::asio::streambuf;
 using namespace std;
+using std::move;
 
 connection::connection(tcp::socket&& socket,
     connection_manager& manager, request_handler& handler)
@@ -95,7 +96,7 @@ void connection::start() {
                     cerr << "[INFO] bytes in headers: " << headers.length() << endl;
                     
                     cerr << "[INFO] headers: " << endl << endl << headers << endl;
-                    cerr << "[INFO] content length: " << request->headers.content_length << endl;
+                    //cerr << "[INFO] content length: " << request->headers.content_length << endl;
                     
                     bool result = request_parser_.parse_headers(
                         *request, headers);
@@ -107,15 +108,15 @@ void connection::start() {
                         write();
                       };
                       
-                      if (request->headers.content_length > 0) {
-                        request->payload.resize(request->headers.content_length);
+                      if (2/*request->headers.content_length*/ > 0) {
+                        request->payload.resize(2/*request->headers.content_length*/);
                         
                         // part of the payload may have already been recieved
                         request->payload = output_stream.str().substr(bytes);
                         
-                        if (request->payload.length() < request->headers.content_length) {
+                        if (request->payload.length() < 2/*request->headers.content_length*/) {
                           size_t remaining_length =
-                              request->headers.content_length - request->payload.length();
+                              2/*request->headers.content_length*/ - request->payload.length();
                           
                           auto rest = make_shared<vector<char>>();
                           rest->resize(remaining_length);

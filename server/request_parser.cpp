@@ -11,6 +11,8 @@
 #include "request_parser.hpp"
 #include "request.hpp"
 
+#include <boost/fusion/adapted.hpp>
+
 namespace http {
 namespace server {
 
@@ -21,6 +23,15 @@ request_parser::request_parser()
 void request_parser::reset() {
   state_ = method_start;
 }
+
+bool request_parser::parse_request_line(request& request, std::string request_line) const {
+  return true;
+}
+
+bool request_parser::parse_headers(request& request, std::string headers) const {
+  return true;
+}
+
 
 request_parser::result_type request_parser::consume(request& req, char input) {
 //  switch (state_) {

@@ -9,16 +9,23 @@
 //
 
 #include "connection.hpp"
+
 #include <utility>
 #include <vector>
 #include <sstream>
 #include <string>
+#include <iterator>
+#include <iostream>
+
+#include <boost/range/algorithm.hpp>
+
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
 
 namespace http {
 namespace server {
 
+using namespace boost;
 using boost::system::error_code;
 using namespace boost::asio;
 using namespace boost::asio::ip;
@@ -34,7 +41,7 @@ connection::connection(tcp::socket&& socket,
 
 void connection::start() {
   auto header_buffer = make_shared<streambuf>();
-      
+  
   async_read_until(socket_, *header_buffer, "\r\n",
       [this, self = shared_from_this(), header_buffer](
           error_code code, size_t bytes) {
@@ -43,6 +50,8 @@ void connection::start() {
           auto reply   = make_shared<http::server::reply>();
           
           auto write = [this, reply]() {
+            cerr << "[INFO] writing request" << endl;
+            
             async_write(socket_, reply->to_buffers(),
                 [this, self = shared_from_this()](error_code code, size_t) {
                   if (!code) {
@@ -62,6 +71,8 @@ void connection::start() {
           
           getline(input_stream, request_line);
                     
+          cerr << "[INFO] request line: " << request_line << endl;
+          
           bool result  = request_parser_.parse_request_line(
               *request, request_line);
           
@@ -74,39 +85,51 @@ void connection::start() {
                    
                     output_stream << &*header_buffer;
                     
+                    cerr << "[INFO] bytes in buffer: " << output_stream.str().length() << endl;
+                    cerr << "[INFO] bytes to retrieve: " << bytes << endl;
+                    
                     // extract a copy directly from the underlying string, leave
                     // buffer intact in case there is more content past the delimiter
                     string headers = output_stream.str().substr(0, bytes - ("\r\n"s).length());
+                    
+                    cerr << "[INFO] bytes in headers: " << headers.length() << endl;
+                    
+                    cerr << "[INFO] headers: " << endl << endl << headers << endl;
+                    cerr << "[INFO] content length: " << request->headers.content_length << endl;
                     
                     bool result = request_parser_.parse_headers(
                         *request, headers);
                     
                     if (result) {
+                      auto handle_and_write = [this, request, reply, write]() {
+                        cerr << "[INFO] handling request" << endl;
+                        request_handler_.handle_request(*request, *reply);
+                        write();
+                      };
+                      
                       if (request->headers.content_length > 0) {
                         request->payload.resize(request->headers.content_length);
                         
                         // part of the payload may have already been recieved
                         request->payload = output_stream.str().substr(bytes);
                         
-                        auto handle_and_write = [this, request, reply, write]() {
-                          request_handler_.handle_request(*request, *reply);
-                          write();
-                        };
-                        
                         if (request->payload.length() < request->headers.content_length) {
                           size_t remaining_length =
                               request->headers.content_length - request->payload.length();
                           
-                          auto rest = make_shared<string>();
+                          auto rest = make_shared<vector<char>>();
                           rest->resize(remaining_length);
                           
-                          async_read(socket_, buffer(&(*rest)[0], remaining_length),
+                          async_read(socket_, buffer(*rest, remaining_length),
                               transfer_exactly(remaining_length),
                               [this, self = shared_from_this(), request, rest,
                                   handle_and_write](error_code code,
                                       size_t bytes) {
                                 if (!code) {
-                                  request->payload += *rest;
+                                  copy(*rest, back_inserter(request->payload));
+                                      
+                                  cerr << "[INFO] payload: " << endl << endl << request->payload << endl;
+                                  
                                   handle_and_write();
                                 }
                                 else if (code != error::operation_aborted) {
@@ -115,11 +138,17 @@ void connection::start() {
                               });
                         }
                         else {
+                          cerr << "[INFO] payload: " << endl << endl << request->payload << endl << endl;
                           handle_and_write();
                         }
                       }
+                      else {
+                        handle_and_write();
+                      }
                     }
                     else {
+                      cerr << "[ERROR] cannot parse headers" << endl;
+                      
                       *reply = reply::stock_reply(reply::bad_request);
                       write();
                     }
@@ -129,6 +158,8 @@ void connection::start() {
                   }
                 });        
           } else {
+            cerr << "[ERROR] cannot parse request line" << endl;
+            
             *reply = reply::stock_reply(reply::bad_request);
             write();
           }

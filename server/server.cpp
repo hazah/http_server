@@ -11,6 +11,7 @@
 #include "server.hpp"
 #include <signal.h>
 #include <utility>
+#include <iostream>
 
 namespace http {
 namespace server {
@@ -37,6 +38,7 @@ server::server(const std::string& doc_root)
 
   signals_.async_wait(
       [this](error_code /*ec*/, int /*signo*/) {
+        cerr << "[INFO] stopping http_server" << endl;
         io_service_.stop();
       });
 }
@@ -51,6 +53,8 @@ void server::start(const string& address, const string& port) {
   acceptor_.bind(endpoint);
   acceptor_.listen();
 
+  cerr << "[INFO] server started at " << address << " on port " << port << " " << endl;
+  
   do_accept();
   
   io_service_.run();
@@ -66,6 +70,8 @@ void server::do_accept() {
         }
 
         if (!ec) {
+          cerr << "[INFO] connection accepted" << endl;
+          
           connection_manager_.start(make_shared<connection>(move(socket_),
               connection_manager_, request_handler_));
         }

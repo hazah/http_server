@@ -26,7 +26,7 @@ struct request
   int http_version_major;
   int http_version_minor;
   struct {
-    size_t content_length;
+    size_t content_length = 2;
   } headers;
   std::string payload;
 };

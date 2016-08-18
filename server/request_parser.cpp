@@ -33,18 +33,44 @@ namespace http {
 namespace server {
 
 using namespace boost::spirit::qi;
-using namespace boost::spirit::ascii;
+using boost::spirit::ascii::no_case;
+using boost::spirit::ascii::space_type;
 using namespace std;
 
 namespace {
 
 template <typename Iterator>
-struct request_line_grammar : grammar<Iterator, request(), boost::spirit::ascii::space_type> {
+struct request_line_grammar : grammar<Iterator, request(), space_type> {
   request_line_grammar() : request_line_grammar::base_type(start) {
+    start %= 
+      no_case[method] > url > version
+      ;
 
+    
+    method.add("GET",     http::request::method::GET);
+    method.add("POST",    http::request::method::POST);
+    method.add("PUT",     http::request::method::PUT);
+    method.add("DELETE",  http::request::method::DELETE);
+    method.add("PATCH",   http::request::method::PATCH);
+    method.add("HEAD",    http::request::method::HEAD);
+    method.add("CONNECT", http::request::method::CONNECT);
+    method.add("OPTIONS", http::request::method::OPTIONS);
+    method.add("TRACE",   http::request::method::TRACE);
+
+    url %= 
+      +char_ > "://" > +char_ > "/" >> -*(char_ - "?") >> -("?" >> +char_)
+      ;
+
+    version %= no_case[
+      "http/" > +char_ > "." > +char_
+    ];
   }
 
-  rule<Iterator, request(), boost::spirit::ascii::space_type> start;
+  rule<Iterator, request(), space_type> start;
+
+  symbols<char, http::request::method>                 method;
+  rule<Iterator, http::request::url(), space_type>     url;
+  rule<Iterator, http::request::version(), space_type> version;
 };
 
 }

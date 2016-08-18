@@ -15,6 +15,8 @@
 #include <vector>
 
 #include <boost/variant.hpp>
+#include <boost/optional.hpp>
+#include <boost/fusion/include/vector.hpp>
 
 #include "header.hpp"
 
@@ -25,35 +27,25 @@ enum class method {GET, POST, PUT, DELETE, PATCH, HEAD, CONNECT, OPTIONS, TRACE}
 
 struct asterisk {};
 
-struct path {
-  std::string value;
-  
-  path(std::string value) : value(value) {}
-  operator std::string() const { return value; }
-};
-
-struct query {
-  std::string value;
-  
-  query(std::string value) : value(value) {}
-  operator std::string() const { return value; }
+struct url {
+  std::string scheme;
+  std::string host;
+  std::string path;
+  boost::optional<std::string> query;
 };
 
 typedef boost::variant<
   asterisk,
-  path,
-  query
+  url
     > uri;
 
-struct version {
-  std::string major;
-  std::string minor;
-};
-
+typedef boost::fusion::vector<std::string, std::string> version;
+  
 struct host {
   std::string value;
   
   host(std::string value) : value(value) {}
+  host& operator= (std::string new_value) { value = new_value; return *this; }
   operator std::string() const { return value; }
 };
 
@@ -61,6 +53,7 @@ struct accept {
   std::string value;
   
   accept(std::string value) : value(value) {}
+  accept& operator= (std::string new_value) { value = new_value; return *this; }
   operator std::string() const { return value; }
 };
 
@@ -68,6 +61,7 @@ struct content_length {
   size_t value;
   
   content_length(size_t value) : value(value) {}
+  content_length& operator= (size_t new_value) { value = new_value; return *this; }
   operator size_t() const { return value; }
 };
 
@@ -75,7 +69,10 @@ typedef boost::variant<
   host,
   accept,
   content_length
-    > headers;
+    > header;
+
+typedef std::vector<header> headers;
+
 }
 
 
@@ -83,15 +80,10 @@ namespace server {
 
 /// A request received from a client.
 struct request {
-  //http::request::method  method;
-  std::string method;
-  //http::request::uri     uri;
-  std::string uri;
-  ///http::request::version http_version;
-  int http_version_major;
-  int http_version_minor;
-  //http::request::headers headers;
-  std::vector<http::server::header> headers;
+  http::request::method  method;
+  http::request::uri     uri;
+  http::request::version http_version;
+  http::request::headers headers;
   std::string            payload;
 };
 

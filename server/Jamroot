@@ -1,4 +1,6 @@
-using gcc : : : <compileflags>-std=c++1y ;
+using gcc : : : <compileflags>-std=c++1y
+                <compileflags>-Wno-unknown-pragmas
+  ;
 
 lib pthread : : <name>pthread ;
 lib system : : <name>boost_system ;

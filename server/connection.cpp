@@ -9,69 +9,176 @@
 //
 
 #include "connection.hpp"
+
 #include <utility>
 #include <vector>
+#include <sstream>
+#include <string>
+#include <iterator>
+#include <iostream>
+
+#include <boost/range/algorithm.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
 
 namespace http {
 namespace server {
 
-connection::connection(boost::asio::ip::tcp::socket&& socket,
+using namespace boost;
+using boost::system::error_code;
+using namespace boost::asio;
+using namespace boost::asio::ip;
+using boost::asio::streambuf;
+using namespace std;
+using std::move;
+
+connection::connection(tcp::socket&& socket,
     connection_manager& manager, request_handler& handler)
-  : socket_(std::move(socket)),
+  : socket_(move(socket)),
     connection_manager_(manager),
     request_handler_(handler) {
 }
 
 void connection::start() {
-  do_read();
+  auto header_buffer = make_shared<streambuf>();
+  
+  async_read_until(socket_, *header_buffer, "\r\n",
+      [this, self = shared_from_this(), header_buffer](
+          error_code code, size_t bytes) {
+        if (!code) {
+          auto request = make_shared<http::server::request>();
+          auto reply   = make_shared<http::server::reply>();
+          
+          auto write = [this, reply]() {
+            cerr << "[INFO] writing request" << endl;
+            
+            async_write(socket_, reply->to_buffers(),
+                [this, self = shared_from_this()](error_code code, size_t) {
+                  if (!code) {
+                    // Initiate graceful connection closure.
+                    error_code ignored_code;
+                    socket_.shutdown(tcp::socket::shutdown_both, ignored_code);
+                  }
+
+                  if (code != error::operation_aborted) {
+                    connection_manager_.stop(shared_from_this());
+                  }
+                });
+            };
+            
+          istream input_stream(&*header_buffer);
+          string request_line;
+          
+          getline(input_stream, request_line);
+                    
+          cerr << "[INFO] request line: " << request_line << endl;
+          
+          bool result = request_parser_.parse_request_line(
+              *request, request_line);
+          
+          if (result) {
+            async_read_until(socket_, *header_buffer, "\r\n\r\n",
+                [this, self = shared_from_this(), header_buffer, request, reply, write](
+                    error_code code, size_t bytes) {
+                  if (!code) {
+                    ostringstream output_stream;
+                   
+                    output_stream << &*header_buffer;
+                    
+                    cerr << "[INFO] bytes in buffer: " << output_stream.str().length() << endl;
+                    cerr << "[INFO] bytes to retrieve: " << bytes << endl;
+                    
+                    // extract a copy directly from the underlying string, leave
+                    // buffer intact in case there is more content past the delimiter
+                    string headers = output_stream.str().substr(0, bytes - ("\r\n"s).length());
+                    
+                    cerr << "[INFO] bytes in headers: " << headers.length() << endl;
+                    
+                    cerr << "[INFO] headers: " << endl << endl << headers << endl;
+                    
+                    bool result = request_parser_.parse_headers(
+                        *request, headers);
+                    
+                    if (request->headers.count("content-length"))
+                      cerr << "[INFO] content length: " << request->headers["content-length"] << endl;
+                    
+                    if (result) {
+                      auto handle_and_write = [this, request, reply, write]() {
+                        cerr << "[INFO] handling request" << endl;
+                        request_handler_.handle_request(*request, *reply);
+                        write();
+                      };
+
+                      size_t content_length = request->headers.count("content-length") ?
+                          lexical_cast<size_t>(request->headers["content-length"]) : 0;
+                      
+                      if (content_length > 0) {
+                        request->payload.resize(content_length);
+                        
+                        // part of the payload may have already been recieved
+                        request->payload = output_stream.str().substr(bytes);
+                        
+                        if (request->payload.length() < content_length) {
+                          size_t remaining_bytes =
+                              content_length - request->payload.length();
+                          
+                          auto rest = make_shared<vector<char>>();
+                          rest->resize(remaining_bytes);
+                          
+                          async_read(socket_, buffer(*rest, remaining_bytes),
+                              transfer_exactly(remaining_bytes),
+                              [this, self = shared_from_this(), request, rest,
+                                  handle_and_write](error_code code,
+                                      size_t bytes) {
+                                if (!code) {
+                                  copy(*rest, back_inserter(request->payload));
+                                      
+                                  cerr << "[INFO] payload: " << endl << endl << request->payload << endl;
+                                  
+                                  handle_and_write();
+                                }
+                                else if (code != error::operation_aborted) {
+                                  connection_manager_.stop(shared_from_this());
+                                }
+                              });
+                        }
+                        else {
+                          cerr << "[INFO] payload: " << endl << endl << request->payload << endl << endl;
+                          handle_and_write();
+                        }
+                      }
+                      else {
+                        handle_and_write();
+                      }
+                    }
+                    else {
+                      cerr << "[ERROR] cannot parse headers" << endl;
+                      
+                      *reply = reply::stock_reply(reply::bad_request);
+                      write();
+                    }
+                  }
+                  else if (code != error::operation_aborted) {
+                    connection_manager_.stop(shared_from_this());
+                  }
+                });        
+          } else {
+            cerr << "[ERROR] cannot parse request line" << endl;
+            
+            *reply = reply::stock_reply(reply::bad_request);
+            write();
+          }
+        }
+        else if (code != error::operation_aborted) {
+          connection_manager_.stop(shared_from_this());
+        }
+      });
 }
 
 void connection::stop() {
   socket_.close();
-}
-
-void connection::do_read() {
-  socket_.async_read_some(boost::asio::buffer(buffer_),
-      [this, self = shared_from_this()](boost::system::error_code ec, std::size_t bytes_transferred) {
-        if (!ec) {
-          request_parser::result_type result;
-          std::tie(result, std::ignore) = request_parser_.parse(
-              request_, buffer_.data(), buffer_.data() + bytes_transferred);
-
-          if (result == request_parser::good) {
-            request_handler_.handle_request(request_, reply_);
-            do_write();
-          }
-          else if (result == request_parser::bad) {
-            reply_ = reply::stock_reply(reply::bad_request);
-            do_write();
-          }
-          else {
-            do_read();
-          }
-        }
-        else if (ec != boost::asio::error::operation_aborted) {
-          connection_manager_.stop(shared_from_this());
-        }
-      });
-}
-
-void connection::do_write() {
-  boost::asio::async_write(socket_, reply_.to_buffers(),
-      [this, self = shared_from_this()](boost::system::error_code ec, std::size_t) {
-        if (!ec) {
-          // Initiate graceful connection closure.
-          boost::system::error_code ignored_ec;
-          socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both,
-            ignored_ec);
-        }
-
-        if (ec != boost::asio::error::operation_aborted) {
-          connection_manager_.stop(shared_from_this());
-        }
-      });
 }
 
 } // namespace server

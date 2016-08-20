@@ -11,248 +11,123 @@
 #include "request_parser.hpp"
 #include "request.hpp"
 
+#include <boost/fusion/include/vector.hpp>
+#include <boost/fusion/adapted.hpp>
+#include <boost/variant.hpp>
+#include <boost/optional.hpp>
+
+//#define BOOST_SPIRIT_DEBUG
+
+#include <boost/spirit/include/qi.hpp>
+
+BOOST_FUSION_ADAPT_STRUCT(
+  http::server::request,
+  (http::request::method, method)
+  (std::string, uri)
+  (std::string, version)
+)
+
 namespace http {
 namespace server {
 
-request_parser::request_parser()
-  : state_(method_start) {
-}
+using namespace boost;
+using namespace boost::spirit::qi;
+using boost::spirit::qi::on_error;
+using boost::spirit::ascii::no_case;
+using boost::spirit::ascii::blank_type;
+using boost::spirit::ascii::blank;
+using boost::spirit::qi::rule;
+using namespace std;
 
-void request_parser::reset() {
-  state_ = method_start;
-}
+namespace {
 
-request_parser::result_type request_parser::consume(request& req, char input) {
-  switch (state_) {
-  case method_start:
-    if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
-      return bad;
-    }
-    else {
-      state_ = method;
-      req.method.push_back(input);
-      return indeterminate;
-    }
-  case method:
-    if (input == ' ') {
-      state_ = uri;
-      return indeterminate;
-    }
-    else if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
-      return bad;
-    }
-    else {
-      req.method.push_back(input);
-      return indeterminate;
-    }
-  case uri:
-    if (input == ' ') {
-      state_ = http_version_h;
-      return indeterminate;
-    }
-    else if (is_ctl(input)) {
-      return bad;
-    }
-    else {
-      req.uri.push_back(input);
-      return indeterminate;
-    }
-  case http_version_h:
-    if (input == 'H') {
-      state_ = http_version_t_1;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_t_1:
-    if (input == 'T') {
-      state_ = http_version_t_2;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_t_2:
-    if (input == 'T') {
-      state_ = http_version_p;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_p:
-    if (input == 'P') {
-      state_ = http_version_slash;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_slash:
-    if (input == '/') {
-      req.http_version_major = 0;
-      req.http_version_minor = 0;
-      state_ = http_version_major_start;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_major_start:
-    if (is_digit(input)) {
-      req.http_version_major = req.http_version_major * 10 + input - '0';
-      state_ = http_version_major;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_major:
-    if (input == '.') {
-      state_ = http_version_minor_start;
-      return indeterminate;
-    }
-    else if (is_digit(input)) {
-      req.http_version_major = req.http_version_major * 10 + input - '0';
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_minor_start:
-    if (is_digit(input)) {
-      req.http_version_minor = req.http_version_minor * 10 + input - '0';
-      state_ = http_version_minor;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case http_version_minor:
-    if (input == '\r') {
-      state_ = expecting_newline_1;
-      return indeterminate;
-    }
-    else if (is_digit(input)) {
-      req.http_version_minor = req.http_version_minor * 10 + input - '0';
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case expecting_newline_1:
-    if (input == '\n') {
-      state_ = header_line_start;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case header_line_start:
-    if (input == '\r') {
-      state_ = expecting_newline_3;
-      return indeterminate;
-    }
-    else if (!req.headers.empty() && (input == ' ' || input == '\t')) {
-      state_ = header_lws;
-      return indeterminate;
-    }
-    else if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
-      return bad;
-    }
-    else {
-      req.headers.push_back(header());
-      req.headers.back().name.push_back(input);
-      state_ = header_name;
-      return indeterminate;
-    }
-  case header_lws:
-    if (input == '\r') {
-      state_ = expecting_newline_2;
-      return indeterminate;
-    }
-    else if (input == ' ' || input == '\t') {
-      return indeterminate;
-    }
-    else if (is_ctl(input)) {
-      return bad;
-    }
-    else {
-      state_ = header_value;
-      req.headers.back().value.push_back(input);
-      return indeterminate;
-    }
-  case header_name:
-    if (input == ':') {
-      state_ = space_before_header_value;
-      return indeterminate;
-    }
-    else if (!is_char(input) || is_ctl(input) || is_tspecial(input)) {
-      return bad;
-    }
-    else {
-      req.headers.back().name.push_back(input);
-      return indeterminate;
-    }
-  case space_before_header_value:
-    if (input == ' ') {
-      state_ = header_value;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case header_value:
-    if (input == '\r') {
-      state_ = expecting_newline_2;
-      return indeterminate;
-    }
-    else if (is_ctl(input)) {
-      return bad;
-    }
-    else {
-      req.headers.back().value.push_back(input);
-      return indeterminate;
-    }
-  case expecting_newline_2:
-    if (input == '\n') {
-      state_ = header_line_start;
-      return indeterminate;
-    }
-    else {
-      return bad;
-    }
-  case expecting_newline_3:
-    return (input == '\n') ? good : bad;
-  default:
-    return bad;
+template <typename Iterator>
+struct request_line_grammar : grammar<Iterator, http::server::request(), blank_type> {
+  request_line_grammar() : request_line_grammar::base_type(request_line, "request line") {
+    method.add("GET",     http::request::method::GET);
+    method.add("POST",    http::request::method::POST);
+    method.add("PUT",     http::request::method::PUT);
+    method.add("DELETE",  http::request::method::DELETE);
+    method.add("PATCH",   http::request::method::PATCH);
+    method.add("HEAD",    http::request::method::HEAD);
+    method.add("CONNECT", http::request::method::CONNECT);
+    method.add("OPTIONS", http::request::method::OPTIONS);
+    method.add("TRACE",   http::request::method::TRACE);
+
+    uri %= +graph;
+    version %= no_case["HTTP/"] >> +char_("0-9.");
+
+    request_line %= lexeme[method] >> uri >> version;
+
+    method.name("method");
+    uri.name("uri");
+    version.name("version");
+
+    BOOST_SPIRIT_DEBUG_NODES((request_line)(uri)(version));
   }
+
+  rule<Iterator, http::server::request(), blank_type> request_line;
+
+  symbols<char,  http::request::method> method;
+  rule<Iterator, std::string()>         uri;
+  rule<Iterator, std::string()>         version;
+};
+
 }
 
-bool request_parser::is_char(int c) {
-  return c >= 0 && c <= 127;
-}
+bool request_parser::parse_request_line(request& request, std::string request_line) const {
+  typedef std::string::const_iterator iterator;
 
-bool request_parser::is_ctl(int c) {
-  return (c >= 0 && c <= 31) || (c == 127);
-}
+  iterator position = request_line.begin(),
+           end = request_line.end();
 
-bool request_parser::is_tspecial(int c)
-{
-  switch (c) {
-  case '(': case ')': case '<': case '>': case '@':
-  case ',': case ';': case ':': case '\\': case '"':
-  case '/': case '[': case ']': case '?': case '=':
-  case '{': case '}': case ' ': case '\t':
-    return true;
-  default:
-    return false;
+  request_line_grammar<iterator> grammar;
+  bool result = phrase_parse(position, end, grammar, blank, request);
+
+  if (!result) {
+    cerr << "[ERROR] request line parsing stopped at: " << std::string(position, end) << endl;
   }
+
+  return result;
 }
 
-bool request_parser::is_digit(int c) {
-  return c >= '0' && c <= '9';
+namespace {
+
+template <typename Iterator>
+struct headers_grammar : grammar<Iterator, request::headers_type(), blank_type> {
+  headers_grammar() : headers_grammar::base_type(headers, "headers") {
+    name %= +char_("-0-9a-zA-Z");
+    value %= +~char_("\r\n");
+
+    headers %= *(name >> ":" >> value >> -lexeme["\r\n"]);
+
+    name.name("name");
+    value.name("value");
+
+    BOOST_SPIRIT_DEBUG_NODES((name)(value));
+  }
+
+  rule<Iterator, request::headers_type(), blank_type> headers;
+  rule<Iterator, std::string()> name, value;
+};
+
+}
+
+bool request_parser::parse_headers(request& request, std::string headers) const {
+  typedef std::string::const_iterator iterator;
+
+  iterator position = headers.begin(),
+           end = headers.end();
+
+  headers_grammar<iterator> grammar;
+  bool result = phrase_parse(position, end, grammar, blank, request.headers);
+
+  if (!result) {
+    cerr << "[ERROR] request line parsing stopped at: " << std::string(position, end) << endl;
+  }
+
+  return result;
+  return true;
 }
 
 } // namespace server

@@ -76,16 +76,15 @@ int main(int argc, const char* argv[]) {
     path app_root(application_root);
     application_root = canonical(app_root).string();
     
-    cerr << "[INFO]: initializing http_server[" << host << ":" << port << ":"
-         << application_root << "]" << endl;
+    cerr << "[INFO] initializing http_server" << endl;
 
     // Initialize the server.
-    server http_server(host, port, application_root);
+    server http_server(application_root);
 
     // Run the server until stopped.
-    http_server.run();
+    http_server.start(host, port);
   } catch (exception& error) {
-    cerr << "error: " << error.what() << "\n";
+    cerr << "[ERROR]: " << error.what() << endl;
     return 1;
   }
 }

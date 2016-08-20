@@ -12,20 +12,43 @@
 #define HTTP_REQUEST_HPP
 
 #include <string>
-#include <vector>
+#include <map>
+#include <ostream>
+#include <boost/algorithm/string.hpp>
+
+
 #include "header.hpp"
 
 namespace http {
+
+namespace request {
+
+enum class method {GET, POST, PUT, DELETE, PATCH, HEAD, CONNECT, OPTIONS, TRACE};
+
+inline std::ostream& operator<<(std::ostream& os, method m) {
+  return os << static_cast<std::underlying_type<method>::type>(m);
+}
+
+}
+
 namespace server {
 
 /// A request received from a client.
-struct request
-{
-  std::string method;
+struct request {
+  http::request::method method;
   std::string uri;
-  int http_version_major;
-  int http_version_minor;
-  std::vector<header> headers;
+  std::string version;
+
+  struct comperator {
+  	bool operator()(const std::string& s1, const std::string& s2) const {
+  		return boost::algorithm::to_lower_copy(s1) < boost::algorithm::to_lower_copy(s2);
+  	}
+  };
+
+  typedef std::map<std::string, std::string, comperator> headers_type;
+  headers_type headers;
+  
+  std::string payload;
 };
 
 } // namespace server

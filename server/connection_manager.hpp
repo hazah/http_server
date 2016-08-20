@@ -26,7 +26,7 @@ public:
   connection_manager& operator=(const connection_manager&) = delete;
 
   /// Construct a connection manager.
-  connection_manager();
+  connection_manager(boost::asio::io_service& io_service_);
 
   /// Add the specified connection to the manager and start it.
   void start(connection_ptr c);
@@ -40,6 +40,9 @@ public:
 private:
   /// The managed connections.
   std::set<connection_ptr> connections_;
+  
+  /// The io_service used to perform asynchronous operations.
+  boost::asio::io_service& io_service_;
 };
 
 } // namespace server

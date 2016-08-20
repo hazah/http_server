@@ -57,7 +57,7 @@ struct request_line_grammar : grammar<Iterator, http::server::request(), blank_t
     uri %= +graph;
     version %= no_case["HTTP/"] >> +char_("0-9.");
 
-    request_line %= lexeme[method] >> uri >> version;
+    request_line %= lexeme[no_case[method]] >> uri >> version;
 
     method.name("method");
     uri.name("uri");

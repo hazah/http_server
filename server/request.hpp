@@ -12,79 +12,35 @@
 #define HTTP_REQUEST_HPP
 
 #include <string>
-#include <vector>
+#include <map>
+#include <ostream>
 
-#include <boost/variant.hpp>
-#include <boost/optional.hpp>
-#include <boost/fusion/include/vector.hpp>
 
 #include "header.hpp"
 
 namespace http {
+
 namespace request {
 
 enum class method {GET, POST, PUT, DELETE, PATCH, HEAD, CONNECT, OPTIONS, TRACE};
 
-struct asterisk {};
-
-struct url {
-  std::string scheme;
-  std::string host;
-  std::string path;
-  boost::optional<std::string> query;
-};
-
-typedef boost::variant<
-  asterisk,
-  url
-    > uri;
-
-typedef boost::fusion::vector<std::string, std::string> version;
-  
-struct host {
-  std::string value;
-  
-  host(std::string value) : value(value) {}
-  host& operator= (std::string new_value) { value = new_value; return *this; }
-  operator std::string() const { return value; }
-};
-
-struct accept {
-  std::string value;
-  
-  accept(std::string value) : value(value) {}
-  accept& operator= (std::string new_value) { value = new_value; return *this; }
-  operator std::string() const { return value; }
-};
-
-struct content_length {
-  size_t value;
-  
-  content_length(size_t value) : value(value) {}
-  content_length& operator= (size_t new_value) { value = new_value; return *this; }
-  operator size_t() const { return value; }
-};
-
-typedef boost::variant<
-  host,
-  accept,
-  content_length
-    > header;
-
-typedef std::vector<header> headers;
-
+inline std::ostream& operator<<(std::ostream& os, method m) {
+  return os << static_cast<std::underlying_type<method>::type>(m);
 }
 
+}
 
 namespace server {
 
 /// A request received from a client.
 struct request {
-  http::request::method  method;
-  http::request::uri     uri;
-  http::request::version http_version;
-  http::request::headers headers;
-  std::string            payload;
+  http::request::method method;
+  std::string uri;
+  std::string version;
+
+  std::map<std::string, std::string> headers;
+  
+  std::string payload;
 };
 
 } // namespace server

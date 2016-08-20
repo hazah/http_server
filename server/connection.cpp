@@ -18,6 +18,7 @@
 #include <iostream>
 
 #include <boost/range/algorithm.hpp>
+#include <boost/lexical_cast.hpp>
 
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
@@ -74,7 +75,7 @@ void connection::start() {
                     
           cerr << "[INFO] request line: " << request_line << endl;
           
-          bool result  = request_parser_.parse_request_line(
+          bool result = request_parser_.parse_request_line(
               *request, request_line);
           
           if (result) {
@@ -96,10 +97,11 @@ void connection::start() {
                     cerr << "[INFO] bytes in headers: " << headers.length() << endl;
                     
                     cerr << "[INFO] headers: " << endl << endl << headers << endl;
-                    //cerr << "[INFO] content length: " << request->headers.content_length << endl;
                     
                     bool result = request_parser_.parse_headers(
                         *request, headers);
+                    
+                    cerr << "[INFO] content length: " << request->headers["content-length"] << endl;
                     
                     if (result) {
                       auto handle_and_write = [this, request, reply, write]() {
@@ -107,22 +109,25 @@ void connection::start() {
                         request_handler_.handle_request(*request, *reply);
                         write();
                       };
+
+                      size_t content_length = lexical_cast<size_t>(
+                          request->headers["content-length"]);
                       
-                      if (2/*request->headers.content_length*/ > 0) {
-                        request->payload.resize(2/*request->headers.content_length*/);
+                      if (content_length > 0) {
+                        request->payload.resize(content_length);
                         
                         // part of the payload may have already been recieved
                         request->payload = output_stream.str().substr(bytes);
                         
-                        if (request->payload.length() < 2/*request->headers.content_length*/) {
-                          size_t remaining_length =
-                              2/*request->headers.content_length*/ - request->payload.length();
+                        if (request->payload.length() < content_length) {
+                          size_t remaining_bytes =
+                              content_length - request->payload.length();
                           
                           auto rest = make_shared<vector<char>>();
-                          rest->resize(remaining_length);
+                          rest->resize(remaining_bytes);
                           
-                          async_read(socket_, buffer(*rest, remaining_length),
-                              transfer_exactly(remaining_length),
+                          async_read(socket_, buffer(*rest, remaining_bytes),
+                              transfer_exactly(remaining_bytes),
                               [this, self = shared_from_this(), request, rest,
                                   handle_and_write](error_code code,
                                       size_t bytes) {

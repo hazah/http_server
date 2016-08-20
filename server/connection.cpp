@@ -101,7 +101,8 @@ void connection::start() {
                     bool result = request_parser_.parse_headers(
                         *request, headers);
                     
-                    cerr << "[INFO] content length: " << request->headers["content-length"] << endl;
+                    if (request->headers.count("content-length"))
+                      cerr << "[INFO] content length: " << request->headers["content-length"] << endl;
                     
                     if (result) {
                       auto handle_and_write = [this, request, reply, write]() {
@@ -110,8 +111,8 @@ void connection::start() {
                         write();
                       };
 
-                      size_t content_length = lexical_cast<size_t>(
-                          request->headers["content-length"]);
+                      size_t content_length = request->headers.count("content-length") ?
+                          lexical_cast<size_t>(request->headers["content-length"]) : 0;
                       
                       if (content_length > 0) {
                         request->payload.resize(content_length);

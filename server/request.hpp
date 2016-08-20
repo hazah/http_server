@@ -14,6 +14,7 @@
 #include <string>
 #include <map>
 #include <ostream>
+#include <boost/algorithm/string.hpp>
 
 
 #include "header.hpp"
@@ -38,7 +39,14 @@ struct request {
   std::string uri;
   std::string version;
 
-  std::map<std::string, std::string> headers;
+  struct comperator {
+  	bool operator()(const std::string& s1, const std::string& s2) const {
+  		return boost::algorithm::to_lower_copy(s1) < boost::algorithm::to_lower_copy(s2);
+  	}
+  };
+
+  typedef std::map<std::string, std::string, comperator> headers_type;
+  headers_type headers;
   
   std::string payload;
 };

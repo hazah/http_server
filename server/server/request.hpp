@@ -16,9 +16,6 @@
 #include <ostream>
 #include <boost/algorithm/string.hpp>
 
-
-#include "header.hpp"
-
 namespace http {
 
 namespace request {

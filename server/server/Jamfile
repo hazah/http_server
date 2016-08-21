@@ -1,0 +1,2 @@
+
+lib server : [ glob *.cpp ] : <define>BOOST_LOG_DYN_LINK ;

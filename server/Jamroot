@@ -1,17 +1,24 @@
 using gcc : : : <compileflags>-std=c++1y
                 <compileflags>-Wno-unknown-pragmas
+                <compileflags>-DBOOST_LOG_DYN_LINK
   ;
 
-lib pthread : : <name>pthread ;
 lib system : : <name>boost_system ;
+lib log_setup : : <name>boost_log_setup  ;
+lib log : : <name>boost_log ;
 lib filesystem : : <name>boost_filesystem ;
+lib pthread : : <name>pthread ;
+lib thread : : <name>boost_thread ;
 lib program_options : : <name>boost_program_options ;
 
 exe http_server
-  : pthread
-    system
-    program_options
+  : system
+    log_setup
+    log
     filesystem
+    pthread
+    thread
+    program_options
     connection.cpp
     connection_manager.cpp
     main.cpp

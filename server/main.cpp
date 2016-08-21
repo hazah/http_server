@@ -76,8 +76,6 @@ int main(int argc, const char* argv[]) {
     path app_root(application_root);
     application_root = canonical(app_root).string();
     
-    cerr << "[INFO] initializing http_server" << endl;
-
     // Initialize the server.
     server http_server(application_root);
 

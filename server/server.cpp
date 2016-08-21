@@ -9,26 +9,100 @@
 //
 
 #include "server.hpp"
+
+#include <boost/core/null_deleter.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sinks/text_file_backend.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/manipulators/to_log.hpp>
+#include <boost/log/utility/formatting_ostream.hpp>
+#include <boost/log/utility/value_ref.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+
 #include <signal.h>
 #include <utility>
 #include <iostream>
+#include <map>
+#include <string>
 
 namespace http {
 namespace server {
 
 using boost::system::error_code;
+using namespace boost::log;
+using namespace boost::log::sources;
+using namespace boost::log::sinks;
+using namespace boost::log::keywords;
+using namespace boost::log::sinks;
+using namespace boost::log::trivial;
+using namespace boost::log::expressions;
 using namespace boost::asio;
 using namespace boost::asio::ip;
+using namespace boost;
 using namespace std;
 
-server::server(const std::string& doc_root)
+using std::move;
+using std::make_shared;
+using boost::log::trivial::severity;
+using boost::log::keywords::format;
+using boost::log::keywords::filter;
+
+
+namespace {
+
+struct severity_tag;
+
+formatting_ostream& operator<<(formatting_ostream& stream,
+    const to_log_manip<severity_level, severity_tag>& manip) {
+  map<severity_level, string> mapping;
+  
+  mapping[trace] = "TRACE";
+  mapping[debug] = "DEBUG";
+  mapping[info] = "INFO";
+  mapping[warning] = "WARNING";
+  mapping[severity_level::error] = "ERROR";
+  mapping[fatal] = "FATAL";
+
+  return stream << mapping[manip.get()];
+}
+
+}
+
+
+server::server(const std::string& app_root)
   : io_service_(),
     signals_(io_service_),
     acceptor_(io_service_),
     connection_manager_(io_service_),
     socket_(io_service_),
-    request_handler_(doc_root) {
+    request_handler_(app_root) {
   
+  auto severity = attr<severity_level, severity_tag>("Severity");
+  auto frmt = stream << "[" << severity << "] " << smessage;
+  
+  add_file_log(
+    file_name = "logs/development.log",
+    auto_flush = true,
+    format = frmt,
+    filter = has_attr("Severity"));
+  add_console_log(
+    clog,
+    format = frmt,
+    filter = has_attr("Severity"));
+  add_console_log(cout,
+    auto_flush = true,
+    format = stream << "=> " << smessage,
+    filter = !has_attr("Severity"));
+  add_common_attributes();
+
+  log("Booting Server");
+  log("Ctrl-C to shutdown server");
+
   // Register to handle the signals that indicate when the server should exit.
   signals_.add(SIGINT);
   signals_.add(SIGTERM);
@@ -38,7 +112,7 @@ server::server(const std::string& doc_root)
 
   signals_.async_wait(
       [this](error_code /*ec*/, int /*signo*/) {
-        cerr << "[INFO] stopping http_server" << endl;
+        log(info, "going to shutdown");
         io_service_.stop();
       });
 }
@@ -53,7 +127,7 @@ void server::start(const string& address, const string& port) {
   acceptor_.bind(endpoint);
   acceptor_.listen();
 
-  cerr << "[INFO] server started at " << address << " on port " << port << " " << endl;
+  log("server started at " + address + " on port " + port);
   
   do_accept();
   

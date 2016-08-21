@@ -13,6 +13,10 @@
 
 #include <boost/asio.hpp>
 #include <string>
+#include <boost/log/trivial.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/sources/severity_logger.hpp>
+
 #include "connection.hpp"
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
@@ -54,6 +58,18 @@ private:
 
   /// The handler for all incoming requests.
   request_handler request_handler_;
+
+
+  mutable boost::log::sources::logger logger;
+  mutable boost::log::sources::severity_logger<boost::log::trivial::severity_level> severity_logger;
+
+  void log(boost::log::trivial::severity_level level, std::string message) const {
+    BOOST_LOG_SEV(severity_logger, level) << message;
+  }
+
+  void log(std::string message) const {
+    BOOST_LOG(logger) << message;
+  }
 };
 
 } // namespace server

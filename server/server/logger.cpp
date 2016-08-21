@@ -71,6 +71,7 @@ void logger::init_logger() {
     filter = has_attr("Severity"));
   add_console_log(
     clog,
+    auto_flush = true,
     format = frmt,
     filter = has_attr("Severity"));
   add_console_log(cout,

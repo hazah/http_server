@@ -2,7 +2,7 @@
 // request_parser.cpp
 // ~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2016 Ivgeni Slabkovski
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -94,7 +94,7 @@ bool request_parser::parse_request_line(request& request, std::string request_li
 namespace {
 
 template <typename Iterator>
-struct headers_grammar : grammar<Iterator, request::headers_type(), blank_type> {
+struct headers_grammar : grammar<Iterator, http::request::headers_type(), blank_type> {
   headers_grammar() : headers_grammar::base_type(headers, "headers") {
     name %= +char_("-0-9a-zA-Z");
     value %= +~char_("\r\n");
@@ -107,7 +107,7 @@ struct headers_grammar : grammar<Iterator, request::headers_type(), blank_type> 
     BOOST_SPIRIT_DEBUG_NODES((name)(value));
   }
 
-  rule<Iterator, request::headers_type(), blank_type> headers;
+  rule<Iterator, http::request::headers_type(), blank_type> headers;
   rule<Iterator, std::string()> name, value;
 };
 

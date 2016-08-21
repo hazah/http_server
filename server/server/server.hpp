@@ -18,6 +18,7 @@
 #include <boost/log/sources/severity_logger.hpp>
 
 #include "logger.hpp"
+#include "config.hpp"
 #include "connection.hpp"
 #include "connection_manager.hpp"
 #include "request_handler.hpp"
@@ -31,46 +32,35 @@ public:
   server(const server&) = delete;
   server& operator=(const server&) = delete;
 
-  /// Construct the server to serve up files from the given directory.
-  explicit server(const std::string& doc_root);
+  /// Construct the server to serve up files based on the given options.
+  explicit server(int argc, const char* argv[]);
 
-  /// Run the server's io_service loop and listen on the specified
-  /// TCP address and port.
-  void start(const std::string& address, const std::string& port);
+  /// Run the server's loop.
+  int start() const;
 
 private:
   /// Perform an asynchronous accept operation.
-  void do_accept();
+  void do_accept() const;
+
+  config configuration;
 
   /// The io_service used to perform asynchronous operations.
-  boost::asio::io_service io_service_;
+  mutable boost::asio::io_service io_service_;
 
   /// The signal_set is used to register for process termination notifications.
-  boost::asio::signal_set signals_;
+  mutable boost::asio::signal_set signals_;
 
   /// Acceptor used to listen for incoming connections.
-  boost::asio::ip::tcp::acceptor acceptor_;
+  mutable boost::asio::ip::tcp::acceptor acceptor_;
 
   /// The connection manager which owns all live connections.
-  connection_manager connection_manager_;
+  mutable connection_manager connection_manager_;
 
   /// The next socket to be accepted.
-  boost::asio::ip::tcp::socket socket_;
+  mutable boost::asio::ip::tcp::socket socket_;
 
   /// The handler for all incoming requests.
-  request_handler request_handler_;
-
-
-  mutable boost::log::sources::logger logger;
-  mutable boost::log::sources::severity_logger<boost::log::trivial::severity_level> severity_logger;
-
-  void log(boost::log::trivial::severity_level level, std::string message) const {
-    BOOST_LOG_SEV(severity_logger, level) << message;
-  }
-
-  void log(std::string message) const {
-    BOOST_LOG(logger) << message;
-  }
+  mutable request_handler request_handler_;
 };
 
 } // namespace server

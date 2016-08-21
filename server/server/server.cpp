@@ -2,7 +2,7 @@
 // server.cpp
 // ~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2016 Ivgeni Slabkovski
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,27 +12,31 @@
 
 #include <signal.h>
 #include <utility>
-#include <iostream>
 #include <map>
 #include <string>
+#include <sstream>
 
 namespace http {
 namespace server {
 
-using boost::system::error_code;
+using namespace boost::system;
 using namespace boost::asio;
 using namespace boost::asio::ip;
 using namespace std;
 
+using boost::system::error_code;
 
-server::server(const std::string& app_root)
-  : io_service_(),
+server::server(const int argc, const char* argv[])
+  : configuration(argc, argv),
+    io_service_(),
     signals_(io_service_),
     acceptor_(io_service_),
     connection_manager_(io_service_),
     socket_(io_service_),
-    request_handler_(app_root) {
+    request_handler_() {
+  
   init_logger();
+  
   log("Booting Server");
   log("Ctrl-C to shutdown server");
 
@@ -50,24 +54,28 @@ server::server(const std::string& app_root)
       });
 }
 
-void server::start(const string& address, const string& port) {
+int server::start() const {
   // Open the acceptor with the option to reuse the address (i.e. SO_REUSEADDR).
   tcp::resolver resolver(io_service_);
-  tcp::endpoint endpoint = *resolver.resolve({address, port});
+  tcp::endpoint endpoint = *resolver.resolve({configuration.host, configuration.port});
   
   acceptor_.open(endpoint.protocol());
   acceptor_.set_option(tcp::acceptor::reuse_address(true));
   acceptor_.bind(endpoint);
   acceptor_.listen();
-
-  log("server started at " + address + " on port " + port);
-  
+  {
+    ostringstream stream;
+    stream << "server started at " << configuration.host << " on port " << configuration.port;
+    log(stream.str());
+  }  
   do_accept();
   
   io_service_.run();
+
+  return errc::success;
 }
 
-void server::do_accept() {
+void server::do_accept() const {
   acceptor_.async_accept(socket_,
       [this](error_code ec) {
         // Check whether the server was stopped by a signal before this

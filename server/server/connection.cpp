@@ -2,7 +2,7 @@
 // connection.cpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2016 Ivgeni Slabkovski
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -15,7 +15,6 @@
 #include <sstream>
 #include <string>
 #include <iterator>
-#include <iostream>
 
 #include <boost/range/algorithm.hpp>
 #include <boost/lexical_cast.hpp>
@@ -73,7 +72,11 @@ void connection::start() {
           
           getline(input_stream, request_line);
                     
-          log(info, "request line: " + request_line);
+          {
+            ostringstream stream;
+            stream << "request line: " << request_line;
+            log(debug, stream.str());
+          }
           
           bool result = request_parser_.parse_request_line(
               *request, request_line);
@@ -86,22 +89,39 @@ void connection::start() {
                     ostringstream output_stream;
                    
                     output_stream << &*header_buffer;
-                    
-                    log(trace, "bytes in buffer: " + output_stream.str().length());
-                    log(debug, "bytes to retrieve: " + bytes);
-                    
+                    {
+                      ostringstream stream;
+                      stream << "bytes in buffer: " << output_stream.str().length();
+                      log(trace, stream.str());
+                    }
+                    {
+                      ostringstream stream;
+                      stream << "bytes to retrieve: " << bytes;
+                      log(debug, stream.str());
+                    }
                     // extract a copy directly from the underlying string, leave
                     // buffer intact in case there is more content past the delimiter
                     string headers = output_stream.str().substr(0, bytes - ("\r\n"s).length());
                     
-                    log(trace, "bytes in headers: " + headers.length());
-                    log(debug, "headers: \n\n" + headers + "\n");
+                    {
+                      ostringstream stream;
+                      stream << "bytes in headers: " << headers.length();
+                      log(trace, stream.str());
+                    }
+                    {
+                      ostringstream stream;
+                      stream << "headers: " << endl << endl << headers;
+                      log(debug, stream.str());
+                    }
                     
                     bool result = request_parser_.parse_headers(
                         *request, headers);
                     
-                    if (request->headers.count("content-length"))
-                      log(trace, "content length: " + request->headers["content-length"]);
+                    if (request->headers.count("content-length")) {
+                      ostringstream stream;
+                      stream << "content length: " << request->headers["content-length"];
+                      log(debug, stream.str());
+                    }
                     
                     if (result) {
                       auto handle_and_write = [this, request, reply, write]() {
@@ -134,7 +154,7 @@ void connection::start() {
                                 if (!code) {
                                   copy(*rest, back_inserter(request->payload));
                                       
-                                  log(debug, "payload: \n\n" + request->payload);
+                                  log(debug, "payload: \n\n"s + request->payload + "\n");
                                   
                                   handle_and_write();
                                 }
@@ -144,7 +164,7 @@ void connection::start() {
                               });
                         }
                         else {
-                          log(debug, "payload: \n\n" + request->payload);
+                          log(debug, "payload: \n\n"s + request->payload + "\n");
                           handle_and_write();
                         }
                       }

@@ -52,7 +52,7 @@ void connection::start() {
           auto reply   = make_shared<http::server::reply>();
           
           auto write = [this, reply]() {
-            cerr << "[INFO] writing request" << endl;
+            log(info, "writing request");
             
             async_write(socket_, reply->to_buffers(),
                 [this, self = shared_from_this()](error_code code, size_t) {
@@ -73,7 +73,7 @@ void connection::start() {
           
           getline(input_stream, request_line);
                     
-          cerr << "[INFO] request line: " << request_line << endl;
+          log(info, "request line: " + request_line);
           
           bool result = request_parser_.parse_request_line(
               *request, request_line);
@@ -87,26 +87,25 @@ void connection::start() {
                    
                     output_stream << &*header_buffer;
                     
-                    cerr << "[INFO] bytes in buffer: " << output_stream.str().length() << endl;
-                    cerr << "[INFO] bytes to retrieve: " << bytes << endl;
+                    log(trace, "bytes in buffer: " + output_stream.str().length());
+                    log(debug, "bytes to retrieve: " + bytes);
                     
                     // extract a copy directly from the underlying string, leave
                     // buffer intact in case there is more content past the delimiter
                     string headers = output_stream.str().substr(0, bytes - ("\r\n"s).length());
                     
-                    cerr << "[INFO] bytes in headers: " << headers.length() << endl;
-                    
-                    cerr << "[INFO] headers: " << endl << endl << headers << endl;
+                    log(trace, "bytes in headers: " + headers.length());
+                    log(debug, "headers: \n\n" + headers + "\n");
                     
                     bool result = request_parser_.parse_headers(
                         *request, headers);
                     
                     if (request->headers.count("content-length"))
-                      cerr << "[INFO] content length: " << request->headers["content-length"] << endl;
+                      log(trace, "content length: " + request->headers["content-length"]);
                     
                     if (result) {
                       auto handle_and_write = [this, request, reply, write]() {
-                        cerr << "[INFO] handling request" << endl;
+                        log(trace, "handling request");
                         request_handler_.handle_request(*request, *reply);
                         write();
                       };
@@ -135,7 +134,7 @@ void connection::start() {
                                 if (!code) {
                                   copy(*rest, back_inserter(request->payload));
                                       
-                                  cerr << "[INFO] payload: " << endl << endl << request->payload << endl;
+                                  log(debug, "payload: \n\n" + request->payload);
                                   
                                   handle_and_write();
                                 }
@@ -145,7 +144,7 @@ void connection::start() {
                               });
                         }
                         else {
-                          cerr << "[INFO] payload: " << endl << endl << request->payload << endl << endl;
+                          log(debug, "payload: \n\n" + request->payload);
                           handle_and_write();
                         }
                       }
@@ -154,7 +153,7 @@ void connection::start() {
                       }
                     }
                     else {
-                      cerr << "[ERROR] cannot parse headers" << endl;
+                      log(boost::log::trivial::error, "cannot parse headers");
                       
                       *reply = reply::stock_reply(reply::bad_request);
                       write();
@@ -165,7 +164,7 @@ void connection::start() {
                   }
                 });        
           } else {
-            cerr << "[ERROR] cannot parse request line" << endl;
+            log(boost::log::trivial::error, "cannot parse request line");
             
             *reply = reply::stock_reply(reply::bad_request);
             write();

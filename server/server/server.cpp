@@ -10,20 +10,6 @@
 
 #include "server.hpp"
 
-#include <boost/core/null_deleter.hpp>
-#include <boost/log/core.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/sinks/text_file_backend.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/console.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/utility/manipulators/to_log.hpp>
-#include <boost/log/utility/formatting_ostream.hpp>
-#include <boost/log/utility/value_ref.hpp>
-#include <boost/log/sinks/text_ostream_backend.hpp>
-#include <boost/log/support/date_time.hpp>
-#include <boost/log/sources/record_ostream.hpp>
-
 #include <signal.h>
 #include <utility>
 #include <iostream>
@@ -34,44 +20,9 @@ namespace http {
 namespace server {
 
 using boost::system::error_code;
-using namespace boost::log;
-using namespace boost::log::sources;
-using namespace boost::log::sinks;
-using namespace boost::log::keywords;
-using namespace boost::log::sinks;
-using namespace boost::log::trivial;
-using namespace boost::log::expressions;
 using namespace boost::asio;
 using namespace boost::asio::ip;
-using namespace boost;
 using namespace std;
-
-using std::move;
-using std::make_shared;
-using boost::log::trivial::severity;
-using boost::log::keywords::format;
-using boost::log::keywords::filter;
-
-
-namespace {
-
-struct severity_tag;
-
-formatting_ostream& operator<<(formatting_ostream& stream,
-    const to_log_manip<severity_level, severity_tag>& manip) {
-  map<severity_level, string> mapping;
-  
-  mapping[trace] = "TRACE";
-  mapping[debug] = "DEBUG";
-  mapping[info] = "INFO";
-  mapping[warning] = "WARNING";
-  mapping[severity_level::error] = "ERROR";
-  mapping[fatal] = "FATAL";
-
-  return stream << mapping[manip.get()];
-}
-
-}
 
 
 server::server(const std::string& app_root)
@@ -81,25 +32,7 @@ server::server(const std::string& app_root)
     connection_manager_(io_service_),
     socket_(io_service_),
     request_handler_(app_root) {
-  
-  auto severity = attr<severity_level, severity_tag>("Severity");
-  auto frmt = stream << "[" << severity << "] " << smessage;
-  
-  add_file_log(
-    file_name = "logs/development.log",
-    auto_flush = true,
-    format = frmt,
-    filter = has_attr("Severity"));
-  add_console_log(
-    clog,
-    format = frmt,
-    filter = has_attr("Severity"));
-  add_console_log(cout,
-    auto_flush = true,
-    format = stream << "=> " << smessage,
-    filter = !has_attr("Severity"));
-  add_common_attributes();
-
+  init_logger();
   log("Booting Server");
   log("Ctrl-C to shutdown server");
 
@@ -144,7 +77,7 @@ void server::do_accept() {
         }
 
         if (!ec) {
-          cerr << "[INFO] connection accepted" << endl;
+          log(info, "connection accepted");
           
           connection_manager_.start(make_shared<connection>(move(socket_),
               connection_manager_, request_handler_));

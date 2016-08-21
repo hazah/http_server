@@ -44,15 +44,15 @@ namespace {
 template <typename Iterator>
 struct request_line_grammar : grammar<Iterator, http::server::request(), blank_type> {
   request_line_grammar() : request_line_grammar::base_type(request_line, "request line") {
-    method.add("GET",     http::request::method::GET);
-    method.add("POST",    http::request::method::POST);
-    method.add("PUT",     http::request::method::PUT);
-    method.add("DELETE",  http::request::method::DELETE);
-    method.add("PATCH",   http::request::method::PATCH);
-    method.add("HEAD",    http::request::method::HEAD);
-    method.add("CONNECT", http::request::method::CONNECT);
-    method.add("OPTIONS", http::request::method::OPTIONS);
-    method.add("TRACE",   http::request::method::TRACE);
+    method.add("get",     http::request::method::GET);
+    method.add("post",    http::request::method::POST);
+    method.add("put",     http::request::method::PUT);
+    method.add("delete",  http::request::method::DELETE);
+    method.add("patch",   http::request::method::PATCH);
+    method.add("head",    http::request::method::HEAD);
+    method.add("connect", http::request::method::CONNECT);
+    method.add("options", http::request::method::OPTIONS);
+    method.add("trace",   http::request::method::TRACE);
 
     uri %= +graph;
     version %= no_case["HTTP/"] >> +char_("0-9.");
@@ -85,7 +85,7 @@ bool request_parser::parse_request_line(request& request, std::string request_li
   bool result = phrase_parse(position, end, grammar, blank, request);
 
   if (!result) {
-    cerr << "[ERROR] request line parsing stopped at: " << std::string(position, end) << endl;
+    log(error, "request line parsing stopped at: " + std::string(position, end));
   }
 
   return result;
@@ -123,7 +123,7 @@ bool request_parser::parse_headers(request& request, std::string headers) const 
   bool result = phrase_parse(position, end, grammar, blank, request.headers);
 
   if (!result) {
-    cerr << "[ERROR] request line parsing stopped at: " << std::string(position, end) << endl;
+    log(error, "request line parsing stopped at: " + std::string(position, end));
   }
 
   return result;

@@ -11,6 +11,7 @@
 #ifndef HTTP_REQUEST_PARSER_HPP
 #define HTTP_REQUEST_PARSER_HPP
 
+#include "logger.hpp"
 #include <string>
 
 namespace http {
@@ -19,7 +20,7 @@ namespace server {
 struct request;
 
 /// Parser for incoming requests.
-class request_parser {
+class request_parser : logger {
 public:
   bool parse_request_line(request& request, std::string request_line) const;
   bool parse_headers(request& request, std::string headers) const;

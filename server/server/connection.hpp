@@ -14,6 +14,7 @@
 #include <array>
 #include <memory>
 #include <boost/asio.hpp>
+#include "logger.hpp"
 #include "reply.hpp"
 #include "request.hpp"
 #include "request_handler.hpp"
@@ -26,7 +27,7 @@ class connection_manager;
 
 /// Represents a single connection from a client.
 class connection
-  : public std::enable_shared_from_this<connection> {
+  : logger, public std::enable_shared_from_this<connection> {
 public:
   connection(const connection&) = delete;
   connection& operator=(const connection&) = delete;

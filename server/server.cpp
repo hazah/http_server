@@ -86,12 +86,18 @@ server::server(const std::string& app_root)
   auto frmt = stream << "[" << severity << "] " << smessage;
   
   add_file_log(
-    file_name = "development.log",
+    file_name = "logs/development.log",
     auto_flush = true,
     format = frmt,
-    filter = severity >= trace);
-  add_console_log(clog, format = frmt, filter = severity >= trace);
-  add_console_log(clog, format = stream << "=> " << smessage, filter = !has_attr("Severity"));
+    filter = has_attr("Severity"));
+  add_console_log(
+    clog,
+    format = frmt,
+    filter = has_attr("Severity"));
+  add_console_log(cout,
+    auto_flush = true,
+    format = stream << "=> " << smessage,
+    filter = !has_attr("Severity"));
   add_common_attributes();
 
   log("Booting Server");

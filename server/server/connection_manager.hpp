@@ -12,6 +12,7 @@
 #define HTTP_CONNECTION_MANAGER_HPP
 
 #include <set>
+#include <memory>
 #include "connection.hpp"
 
 namespace http {
@@ -28,10 +29,10 @@ public:
   connection_manager(boost::asio::io_service& io_service_);
 
   /// Add the specified connection to the manager and start it.
-  void start(connection_ptr c);
+  void start(std::shared_ptr<boost::asio::ip::tcp::socket> socket, connection_ptr c);
 
   /// Stop the specified connection.
-  void stop(connection_ptr c);
+  void stop(std::shared_ptr<boost::asio::ip::tcp::socket> socket, connection_ptr c);
 
   /// Stop all connections.
   void stop_all();

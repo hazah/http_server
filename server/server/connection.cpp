@@ -32,37 +32,35 @@ using namespace boost::asio::ip;
 using boost::asio::streambuf;
 using namespace std;
 using std::move;
+using std::shared_ptr;
 
-connection::connection(tcp::socket&& socket,
-    connection_manager& manager, request_handler& handler)
-  : socket_(move(socket)),
-    connection_manager_(manager),
-    request_handler_(handler) {
+connection::connection(connection_manager& manager)
+  : connection_manager_(manager) {
 }
 
-void connection::start() {
+void connection::start(shared_ptr<tcp::socket> socket) {
   auto header_buffer = make_shared<streambuf>();
   
-  async_read_until(socket_, *header_buffer, "\r\n",
-      [this, self = shared_from_this(), header_buffer](
+  async_read_until(*socket, *header_buffer, "\r\n",
+      [this, self = shared_from_this(), socket, header_buffer](
           error_code code, size_t bytes) {
         if (!code) {
           auto request = make_shared<http::server::request>();
           auto reply   = make_shared<http::server::reply>();
           
-          auto write = [this, reply]() {
+          auto write = [this, socket, reply]() {
             log(info, "writing request");
             
-            async_write(socket_, reply->to_buffers(),
-                [this, self = shared_from_this()](error_code code, size_t) {
+            async_write(*socket, reply->to_buffers(),
+                [this, self = shared_from_this(), socket](error_code code, size_t) {
                   if (!code) {
                     // Initiate graceful connection closure.
                     error_code ignored_code;
-                    socket_.shutdown(tcp::socket::shutdown_both, ignored_code);
+                    socket->shutdown(tcp::socket::shutdown_both, ignored_code);
                   }
 
                   if (code != error::operation_aborted) {
-                    connection_manager_.stop(shared_from_this());
+                    connection_manager_.stop(socket, shared_from_this());
                   }
                 });
             };
@@ -82,9 +80,9 @@ void connection::start() {
               *request, request_line);
           
           if (result) {
-            async_read_until(socket_, *header_buffer, "\r\n\r\n",
-                [this, self = shared_from_this(), header_buffer, request, reply, write](
-                    error_code code, size_t bytes) {
+            async_read_until(*socket, *header_buffer, "\r\n\r\n",
+                [this, self = shared_from_this(), socket, header_buffer,
+                    request, reply, write](error_code code, size_t bytes) {
                   if (!code) {
                     ostringstream output_stream;
                    
@@ -126,7 +124,7 @@ void connection::start() {
                     if (result) {
                       auto handle_and_write = [this, request, reply, write]() {
                         log(trace, "handling request");
-                        request_handler_.handle_request(*request, *reply);
+                        request_handler().handle_request(*request, *reply);
                         write();
                       };
 
@@ -146,9 +144,9 @@ void connection::start() {
                           
                           auto rest = make_shared<vector<char>>(remaining_bytes);
                           
-                          async_read(socket_, buffer(*rest, remaining_bytes),
+                          async_read(*socket, buffer(*rest, remaining_bytes),
                               transfer_exactly(remaining_bytes),
-                              [this, self = shared_from_this(), request, rest,
+                              [this, self = shared_from_this(), socket, request, rest,
                                   handle_and_write](error_code code,
                                       size_t bytes) {
                                 if (!code) {
@@ -159,7 +157,7 @@ void connection::start() {
                                   handle_and_write();
                                 }
                                 else if (code != error::operation_aborted) {
-                                  connection_manager_.stop(shared_from_this());
+                                  connection_manager_.stop(socket, shared_from_this());
                                 }
                               });
                         }
@@ -180,7 +178,7 @@ void connection::start() {
                     }
                   }
                   else if (code != error::operation_aborted) {
-                    connection_manager_.stop(shared_from_this());
+                    connection_manager_.stop(socket, shared_from_this());
                   }
                 });        
           } else {
@@ -191,13 +189,13 @@ void connection::start() {
           }
         }
         else if (code != error::operation_aborted) {
-          connection_manager_.stop(shared_from_this());
+          connection_manager_.stop(socket, shared_from_this());
         }
       });
 }
 
-void connection::stop() {
-  socket_.close();
+void connection::stop(shared_ptr<tcp::socket> socket) {
+  socket->close();
 }
 
 } // namespace server

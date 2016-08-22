@@ -11,17 +11,18 @@
 #ifndef HTTP_SERVER_HPP
 #define HTTP_SERVER_HPP
 
+#include "logger.hpp"
+#include "config.hpp"
+#include "connection_manager.hpp"
+#include "request_handler.hpp"
+
 #include <boost/asio.hpp>
-#include <string>
 #include <boost/log/trivial.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 
-#include "logger.hpp"
-#include "config.hpp"
-#include "connection.hpp"
-#include "connection_manager.hpp"
-#include "request_handler.hpp"
+#include <string>
+#include <utility>
 
 namespace http {
 namespace server {
@@ -40,27 +41,13 @@ public:
 
 private:
   /// Perform an asynchronous accept operation.
-  void do_accept() const;
+  void do_accept(std::shared_ptr<http::server::connection_manager> connection_manager,
+      std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor) const;
 
   config configuration;
 
   /// The io_service used to perform asynchronous operations.
-  mutable boost::asio::io_service io_service_;
-
-  /// The signal_set is used to register for process termination notifications.
-  mutable boost::asio::signal_set signals_;
-
-  /// Acceptor used to listen for incoming connections.
-  mutable boost::asio::ip::tcp::acceptor acceptor_;
-
-  /// The connection manager which owns all live connections.
-  mutable connection_manager connection_manager_;
-
-  /// The next socket to be accepted.
-  mutable boost::asio::ip::tcp::socket socket_;
-
-  /// The handler for all incoming requests.
-  mutable request_handler request_handler_;
+  mutable boost::asio::io_service io_service;
 };
 
 } // namespace server

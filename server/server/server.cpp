@@ -11,7 +11,6 @@
 #include "server.hpp"
 
 #include <signal.h>
-#include <utility>
 #include <map>
 #include <string>
 #include <sstream>
@@ -27,12 +26,7 @@ using namespace std;
 using boost::system::error_code;
 
 server::server(const int argc, const char* argv[])
-  : configuration(argc, argv),
-    io_service_(),
-    signals_(io_service_),
-    acceptor_(io_service_),
-    connection_manager_(io_service_),
-    socket_(io_service_) {
+  : configuration(argc, argv) {
   
   init_logger();
   
@@ -40,57 +34,63 @@ server::server(const int argc, const char* argv[])
   log("Ctrl-C to shutdown server");
 
   // Register to handle the signals that indicate when the server should exit.
-  signals_.add(SIGINT);
-  signals_.add(SIGTERM);
+  auto signals = make_shared<signal_set>(io_service);
+  signals->add(SIGINT);
+  signals->add(SIGTERM);
 #if defined(SIGQUIT)
-  signals_.add(SIGQUIT);
+  signals->add(SIGQUIT);
 #endif // defined(SIGQUIT)
 
-  signals_.async_wait(
-      [this](error_code /*ec*/, int /*signo*/) {
+  signals->async_wait(
+      [this, signals](error_code /*ec*/, int /*signo*/) {
         log(info, "going to shutdown");
-        io_service_.stop();
+        io_service.stop();
       });
 }
 
 int server::start() const {
   // Open the acceptor with the option to reuse the address (i.e. SO_REUSEADDR).
-  tcp::resolver resolver(io_service_);
+  tcp::resolver resolver(io_service);
   tcp::endpoint endpoint = *resolver.resolve({configuration.host, configuration.port});
   
-  acceptor_.open(endpoint.protocol());
-  acceptor_.set_option(tcp::acceptor::reuse_address(true));
-  acceptor_.bind(endpoint);
-  acceptor_.listen();
+  auto acceptor = make_shared<tcp::acceptor>(io_service);
+  acceptor->open(endpoint.protocol());
+  acceptor->set_option(tcp::acceptor::reuse_address(true));
+  acceptor->bind(endpoint);
+  acceptor->listen();
   {
     ostringstream stream;
     stream << "server started at " << configuration.host << " on port " << configuration.port;
     log(stream.str());
-  }  
-  do_accept();
+  } 
+  auto connection_manager = make_shared<http::server::connection_manager>(io_service);
   
-  io_service_.run();
+  do_accept(connection_manager, acceptor);
+  
+  io_service.run();
 
   return errc::success;
 }
 
-void server::do_accept() const {
-  acceptor_.async_accept(socket_,
-      [this](error_code ec) {
+void server::do_accept(shared_ptr<connection_manager> connection_manager,
+    shared_ptr<tcp::acceptor> acceptor) const {
+
+  auto socket = make_shared<tcp::socket>(io_service);
+  acceptor->async_accept(*socket,
+      [this, connection_manager, acceptor, socket](error_code ec) {
         // Check whether the server was stopped by a signal before this
         // completion handler had a chance to run.
-        if (!acceptor_.is_open()) {
+        if (!acceptor->is_open()) {
           return;
         }
 
         if (!ec) {
           log(info, "connection accepted");
           
-          connection_manager_.start(make_shared<connection>(move(socket_),
-              connection_manager_, request_handler_));
+          connection_manager->start(socket, make_shared<connection>(*connection_manager));
         }
 
-        do_accept();
+        do_accept(connection_manager, acceptor);
       });
 }
 

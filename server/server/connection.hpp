@@ -33,35 +33,22 @@ public:
   connection& operator=(const connection&) = delete;
 
   /// Construct a connection with the given socket.
-  explicit connection(boost::asio::ip::tcp::socket&& socket,
-      connection_manager& manager, request_handler& handler);
+  explicit connection(connection_manager& manager);
 
 private:
 
   /// Start the first asynchronous operation for the connection.
-  void start();
+  void start(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
   /// Stop all asynchronous operations associated with the connection.
-  void stop();
+  void stop(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
   
-  /// Socket for the connection.
-  boost::asio::ip::tcp::socket socket_;
-
   /// The manager for this connection.
   connection_manager& connection_manager_;
-
-  /// The handler used to process the incoming request.
-  request_handler& request_handler_;
-
-  /// The incoming request.
-  request request_;
 
   /// The parser for the incoming request.
   request_parser request_parser_;
 
-  /// The reply to be sent back to the client.
-  reply reply_;
-  
   friend class connection_manager;
 };
 

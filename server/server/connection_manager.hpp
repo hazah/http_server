@@ -19,8 +19,7 @@ namespace server {
 
 /// Manages open connections so that they may be cleanly stopped when the server
 /// needs to shut down.
-class connection_manager
-{
+class connection_manager {
 public:
   connection_manager(const connection_manager&) = delete;
   connection_manager& operator=(const connection_manager&) = delete;

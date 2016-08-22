@@ -19,8 +19,9 @@ namespace server {
 
 struct config {
   config(const int, const char*[]);
-	boost::program_options::options_description information, configuration, options;
-	std::string host, port, application_root;
+	
+  boost::program_options::options_description information, configuration, options;
+  std::string host, port, application_root;
 };
 
 }

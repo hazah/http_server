@@ -19,10 +19,6 @@
 namespace http {
 namespace server {
 
-request_handler::request_handler()
-{
-}
-
 void request_handler::handle_request(const request& req, reply& rep)
 {
   rep = reply::stock_reply(reply::not_found);

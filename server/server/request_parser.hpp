@@ -1,5 +1,3 @@
-//
-// request_parser.hpp
 // ~~~~~~~~~~~~~~~~~~
 //
 // Copyright (c) 2016 Ivgeni Slabkovski

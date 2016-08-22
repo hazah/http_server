@@ -32,8 +32,7 @@ server::server(const int argc, const char* argv[])
     signals_(io_service_),
     acceptor_(io_service_),
     connection_manager_(io_service_),
-    socket_(io_service_),
-    request_handler_() {
+    socket_(io_service_) {
   
   init_logger();
   

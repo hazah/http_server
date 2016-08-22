@@ -134,17 +134,17 @@ void connection::start() {
                           lexical_cast<size_t>(request->headers["content-length"]) : 0;
                       
                       if (content_length > 0) {
-                        request->payload.resize(content_length);
-                        
+                        request->payload.reserve(content_length);
+
                         // part of the payload may have already been recieved
-                        request->payload = output_stream.str().substr(bytes);
+                        copy(output_stream.str().substr(bytes),
+                            back_inserter(request->payload));
                         
                         if (request->payload.length() < content_length) {
                           size_t remaining_bytes =
                               content_length - request->payload.length();
                           
-                          auto rest = make_shared<vector<char>>();
-                          rest->resize(remaining_bytes);
+                          auto rest = make_shared<vector<char>>(remaining_bytes);
                           
                           async_read(socket_, buffer(*rest, remaining_bytes),
                               transfer_exactly(remaining_bytes),

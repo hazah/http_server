@@ -2,7 +2,7 @@
 // request_handler.cpp
 // ~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2016 Ivgeni Slabkovski
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,11 +18,6 @@
 
 namespace http {
 namespace server {
-
-request_handler::request_handler(const std::string& doc_root)
-  : doc_root_(doc_root)
-{
-}
 
 void request_handler::handle_request(const request& req, reply& rep)
 {

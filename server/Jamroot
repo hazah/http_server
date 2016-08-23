@@ -1,6 +1,5 @@
 using gcc : : : <compileflags>-std=c++1y
                 <compileflags>-Wno-unknown-pragmas
-                <compileflags>-DBOOST_LOG_DYN_LINK
   ;
 
 lib system : : <name>boost_system ;
@@ -11,6 +10,8 @@ lib pthread : : <name>pthread ;
 lib thread : : <name>boost_thread ;
 lib program_options : : <name>boost_program_options ;
 
+build-project server ;
+
 exe http_server
   : system
     log_setup
@@ -19,13 +20,6 @@ exe http_server
     pthread
     thread
     program_options
-    connection.cpp
-    connection_manager.cpp
-    main.cpp
-    mime_types.cpp
-    reply.cpp
-    request_handler.cpp
-    request_parser.cpp
-    server.cpp
+    server
   : <toolset>gcc
   ;

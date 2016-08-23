@@ -77,7 +77,7 @@ struct headers_grammar : grammar<Iterator, http::request::headers_type(), blank_
     name %= +char_("-0-9a-zA-Z");
     value %= +~char_("\r\n");
 
-    headers %= *(name >> ":" >> value >> -lexeme["\r\n"]);
+    headers %= *(name >> ":" >> value >> lexeme["\r\n"]);
 
     name.name("name");
     value.name("value");

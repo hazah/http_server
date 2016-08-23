@@ -2,24 +2,21 @@ using gcc : : : <compileflags>-std=c++1y
                 <compileflags>-Wno-unknown-pragmas
   ;
 
-lib system : : <name>boost_system ;
-lib log_setup : : <name>boost_log_setup  ;
-lib log : : <name>boost_log ;
-lib filesystem : : <name>boost_filesystem ;
-lib pthread : : <name>pthread ;
-lib thread : : <name>boost_thread ;
+lib pthread         : : <name>pthread ;
+lib system          : : <name>boost_system ;
+lib log_setup       : : <name>boost_log_setup  ;
+lib log             : : <name>boost_log ;
+lib filesystem      : : <name>boost_filesystem ;
+lib thread          : : <name>boost_thread ;
 lib program_options : : <name>boost_program_options ;
 
-build-project server ;
-
-exe http_server
-  : system
-    log_setup
-    log
-    filesystem
-    pthread
-    thread
-    program_options
-    server
+exe http  : pthread
+            system
+            log_setup
+            log
+            filesystem
+            thread
+            program_options
+            server//server
   : <toolset>gcc
   ;

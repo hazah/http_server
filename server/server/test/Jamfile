@@ -1,0 +1,12 @@
+lib test : : <name>boost_unit_test_framework ;
+
+project
+  : requirements <define>BOOST_TEST_DYN_LINK
+  ;
+
+exe tests
+  : test
+    [ glob *.cpp ]
+    ..//server
+  : <toolset>gcc
+  ;

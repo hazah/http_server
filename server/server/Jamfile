@@ -1,2 +1,6 @@
 
-lib server : [ glob *.cpp ] : <define>BOOST_LOG_DYN_LINK ;
+project
+  : requirements <define>BOOST_LOG_DYN_LINK <define>BOOST_TEST_DYN_LINK
+  ;
+
+lib server : [ glob *.cpp ] ;

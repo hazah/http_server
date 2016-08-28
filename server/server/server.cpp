@@ -9,9 +9,11 @@
 //
 
 #include "server.hpp"
+#include "connection.hpp"
 
 #include <signal.h>
 #include <map>
+#include <utility>
 #include <string>
 #include <sstream>
 
@@ -44,7 +46,7 @@ server::server(const int argc, const char* argv[])
   signals->async_wait(
       [this, signals](error_code /*ec*/, int /*signo*/) {
         log(info, "going to shutdown");
-        io_service.stop();
+        stop_all_connections();
       });
 }
 
@@ -62,22 +64,20 @@ int server::start() const {
     ostringstream stream;
     stream << "server started at " << configuration.host << " on port " << configuration.port;
     log(stream.str());
-  } 
-  auto connection_manager = make_shared<http::server::connection_manager>(io_service);
-  
-  do_accept(connection_manager, acceptor);
+  }
+
+  do_accept(acceptor);
   
   io_service.run();
 
   return errc::success;
 }
 
-void server::do_accept(shared_ptr<connection_manager> connection_manager,
-    shared_ptr<tcp::acceptor> acceptor) const {
+void server::do_accept(shared_ptr<tcp::acceptor> acceptor) const {
 
   auto socket = make_shared<tcp::socket>(io_service);
   acceptor->async_accept(*socket,
-      [this, connection_manager, acceptor, socket](error_code ec) {
+      [this, acceptor, socket](error_code ec) {
         // Check whether the server was stopped by a signal before this
         // completion handler had a chance to run.
         if (!acceptor->is_open()) {
@@ -87,10 +87,12 @@ void server::do_accept(shared_ptr<connection_manager> connection_manager,
         if (!ec) {
           log(info, "connection accepted");
           
-          connection_manager->start(socket, make_shared<connection>(*connection_manager));
+          auto con = make_shared<connection>();
+          con->start(socket);
+          stop_all_connections.connect([con, socket]() { con->stop(socket); });
         }
 
-        do_accept(connection_manager, acceptor);
+        do_accept(acceptor);
       });
 }
 

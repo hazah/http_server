@@ -29,11 +29,9 @@ class connection_manager;
 class connection
   : logger, public std::enable_shared_from_this<connection> {
 public:
+  connection() {}
   connection(const connection&) = delete;
   connection& operator=(const connection&) = delete;
-
-  /// Construct a connection with the given socket.
-  explicit connection(connection_manager& manager);
 
 private:
 
@@ -43,13 +41,10 @@ private:
   /// Stop all asynchronous operations associated with the connection.
   void stop(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
   
-  /// The manager for this connection.
-  connection_manager& connection_manager_;
-
   /// The parser for the incoming request.
   request_parser request_parser_;
 
-  friend class connection_manager;
+  friend class server;
 };
 
 typedef std::shared_ptr<connection> connection_ptr;

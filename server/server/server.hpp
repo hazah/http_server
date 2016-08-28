@@ -13,10 +13,10 @@
 
 #include "logger.hpp"
 #include "config.hpp"
-#include "connection_manager.hpp"
 #include "request_handler.hpp"
 
 #include <boost/asio.hpp>
+#include <boost/signals2.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/severity_logger.hpp>
@@ -41,13 +41,13 @@ public:
 
 private:
   /// Perform an asynchronous accept operation.
-  void do_accept(std::shared_ptr<http::server::connection_manager> connection_manager,
-      std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor) const;
+  void do_accept(std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor) const;
 
   config configuration;
 
   /// The io_service used to perform asynchronous operations.
   mutable boost::asio::io_service io_service;
+  mutable boost::signals2::signal<void()> stop_all_connections;
 };
 
 } // namespace server

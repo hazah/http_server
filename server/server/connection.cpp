@@ -19,7 +19,6 @@
 #include <boost/range/algorithm.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "connection_manager.hpp"
 #include "request_handler.hpp"
 
 namespace http {
@@ -34,9 +33,6 @@ using namespace std;
 using std::move;
 using std::shared_ptr;
 
-connection::connection(connection_manager& manager)
-  : connection_manager_(manager) {
-}
 
 void connection::start(shared_ptr<tcp::socket> socket) {
   auto header_buffer = make_shared<streambuf>();
@@ -60,7 +56,7 @@ void connection::start(shared_ptr<tcp::socket> socket) {
                   }
 
                   if (code != error::operation_aborted) {
-                    connection_manager_.stop(socket, shared_from_this());
+                    stop(socket);
                   }
                 });
             };
@@ -157,7 +153,7 @@ void connection::start(shared_ptr<tcp::socket> socket) {
                                   handle_and_write();
                                 }
                                 else if (code != error::operation_aborted) {
-                                  connection_manager_.stop(socket, shared_from_this());
+                                  stop(socket);
                                 }
                               });
                         }
@@ -178,7 +174,7 @@ void connection::start(shared_ptr<tcp::socket> socket) {
                     }
                   }
                   else if (code != error::operation_aborted) {
-                    connection_manager_.stop(socket, shared_from_this());
+                    stop(socket);
                   }
                 });        
           } else {
@@ -189,7 +185,7 @@ void connection::start(shared_ptr<tcp::socket> socket) {
           }
         }
         else if (code != error::operation_aborted) {
-          connection_manager_.stop(socket, shared_from_this());
+          stop(socket);
         }
       });
 }

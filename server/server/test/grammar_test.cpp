@@ -5,6 +5,11 @@
 #include "../request.hpp"
 #include "../grammar.hpp"
 
+using namespace std;
+using namespace http::server;
+//using namespace boost::spirit::qi;
+//using boost::spirit::ascii;
+
 BOOST_AUTO_TEST_CASE(test_request_line_grammar) {
   std::string request_line = "GET /resource/1?param=value HTTP/1.1";
 

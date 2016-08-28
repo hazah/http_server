@@ -87,9 +87,11 @@ void server::do_accept(shared_ptr<tcp::acceptor> acceptor) const {
         if (!ec) {
           log(info, "connection accepted");
           
-          auto con = make_shared<connection>();
-          con->start(socket);
-          stop_all_connections.connect([con, socket]() { con->stop(socket); });
+          auto connection = make_shared<server::connection>();
+          connection->start(socket);
+          stop_all_connections.connect([connection, socket]() {
+            connection->stop(socket);
+          });
         }
 
         do_accept(acceptor);
